@@ -51,7 +51,7 @@ const { t } = useI18n({
     locale: localeCache.value || 'zh',
     messages: {
         en: {
-            title: 'Cloudflare Temp Email',
+            title: '619 Temp Email System',
             dark: 'Dark',
             light: 'Light',
             login: 'Login',
@@ -63,7 +63,7 @@ const { t } = useI18n({
             home: 'Home',
         },
         zh: {
-            title: 'Cloudflare 临时邮件',
+            title: '619の临时邮件',
             dark: '暗色',
             light: '亮色',
             login: '登录',
