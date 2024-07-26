@@ -1,27 +1,48 @@
 {
   "name": "cloudflare_temp_email",
-  "version": "0.0.0",
+  "version": "0.6.1",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build -m prod --emptyOutDir",
+    "build:release": "vite build -m example --emptyOutDir",
+    "build:pages": "vite build -m pages --emptyOutDir",
+    "build:telegram": "VITE_IS_TELEGRAM=true vite build -m prod --emptyOutDir",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy ../dist --branch production"
+    "deploy:telegram": "npm run build:telegram && wrangler pages deploy ./dist --branch production",
+    "deploy:actions:telegram": "npm run build:telegram && wrangler pages deploy ./dist",
+    "deploy:preview": "npm run build && wrangler pages deploy ./dist --branch preview",
+    "deploy": "npm run build && wrangler pages deploy ./dist --branch production",
+    "deploy:actions": "npm run build && wrangler pages deploy ./dist"
   },
   "dependencies": {
+    "@unhead/vue": "^1.9.15",
     "@vicons/material": "^0.12.0",
-    "@vueuse/core": "^10.7.1",
-    "axios": "^1.6.5",
-    "naive-ui": "^2.37.3",
+    "@vueuse/core": "^10.11.0",
+    "@wangeditor/editor": "^5.1.23",
+    "@wangeditor/editor-for-vue": "^5.1.12",
+    "axios": "^1.7.2",
+    "jszip": "^3.10.1",
+    "mail-parser-wasm": "^0.1.8",
+    "naive-ui": "^2.38.2",
+    "postal-mime": "^2.2.5",
     "vooks": "^0.2.12",
-    "vue": "^3.4.13",
+    "vue": "^3.4.31",
     "vue-clipboard3": "^2.0.0",
-    "vue-i18n": "^9.9.0",
-    "vue-router": "^4.2.5"
+    "vue-i18n": "^9.13.1",
+    "vue-router": "^4.4.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.6.2",
-    "vite": "^4.5.1",
-    "vite-plugin-pwa": "^0.17.4"
+    "@vicons/fa": "^0.12.0",
+    "@vitejs/plugin-vue": "^5.0.5",
+    "unplugin-auto-import": "^0.17.6",
+    "unplugin-vue-components": "^0.27.2",
+    "vite": "^5.3.3",
+    "vite-plugin-pwa": "^0.19.8",
+    "vite-plugin-top-level-await": "^1.4.1",
+    "vite-plugin-wasm": "^3.3.0",
+    "workbox-window": "^7.1.0",
+    "wrangler": "^3.63.1"
   }
 }

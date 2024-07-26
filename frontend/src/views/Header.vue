@@ -1,38 +1,35 @@
 <script setup>
-import { NGrid, NLayoutHeader, NInput } from 'naive-ui'
-import { NButton, NSelect, NModal, NIcon, NMenu } from 'naive-ui'
-import { NSwitch, NPopconfirm } from 'naive-ui'
-import { ref, h, computed } from 'vue'
+import { ref, h, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRouter } from 'vue-router'
+import { useHead } from '@unhead/vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useIsMobile } from '../utils/composables'
-import { DarkModeFilled, DarkModeOutlined, StarOutlineFilled, MenuFilled } from '@vicons/material'
+import {
+    DarkModeFilled, LightModeFilled, MenuFilled,
+    AdminPanelSettingsFilled
+} from '@vicons/material'
+import { GithubAlt, Language, User, Home } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
+import { getRouterPathWithLang } from '../utils'
 
-const { jwt, localeCache, themeSwitch, showAuth, adminAuth, auth } = useGlobalState()
+const message = useMessage()
+
+const {
+    toggleDark, isDark, isTelegram,
+    showAuth, adminAuth, auth, loading, openSettings
+} = useGlobalState()
+const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
 
-const showLogin = ref(false)
-const showLogout = ref(false)
-const password = ref('')
-
-const login = async () => {
-    try {
-        await api.getSettings()
-        jwt.value = password.value;
-        location.reload()
-    } catch (error) {
-        message.error(error.message || "error");
-    }
-}
-
-const logout = () => {
-    jwt.value = '';
-    location.reload()
-}
+const showMobileMenu = ref(false)
+const menuValue = computed(() => {
+    if (route.path.includes("user")) return "user";
+    if (route.path.includes("admin")) return "admin";
+    return "home";
+});
 
 const authFunc = async () => {
     try {
@@ -42,64 +39,100 @@ const authFunc = async () => {
     }
 }
 
-const changeLocale = (locale) => {
-    localeCache.value = locale;
-    location.reload()
+const changeLocale = async (lang) => {
+    if (lang == 'zh') {
+        await router.push(route.fullPath.replace('/en', ''));
+    } else {
+        await router.push(`/${lang}${route.fullPath}`);
+    }
 }
 
-const { t } = useI18n({
-    locale: localeCache.value || 'zh',
+const { locale, t } = useI18n({
     messages: {
         en: {
             title: '619 Temp Email System',
             dark: 'Dark',
             light: 'Light',
-            login: 'Login',
-            logout: 'Logout',
-            logoutConfirm: 'Are you sure to logout?',
-            auth: 'Auth',
-            authTip: 'Please enter the correct auth code',
-            settings: 'Settings',
+            accessHeader: 'Access Password',
+            accessTip: 'Please enter the correct access password',
             home: 'Home',
+            menu: 'Menu',
+            user: 'User',
+            ok: 'OK',
         },
         zh: {
             title: '619の临时邮件',
             dark: '暗色',
             light: '亮色',
-            login: '登录',
-            logout: '登出',
-            logoutConfirm: '确定要登出吗？',
-            auth: '授权',
-            authTip: '请输入正确的授权码',
-            settings: '设置',
+            accessHeader: '访问密码',
+            accessTip: '请输入站点访问密码',
             home: '主页',
+            menu: '菜单',
+            user: '用户',
+            ok: '确定',
         }
     }
 });
 
+const version = import.meta.env.PACKAGE_VERSION ? `v${import.meta.env.PACKAGE_VERSION}` : "";
 
 const menuOptions = computed(() => [
     {
-        label: () => h(
-            NButton,
+        label: () => h(NButton,
             {
-                tertiary: true,
-                ghost: true,
-                onClick: () => router.push('/')
+                text: true,
+                size: "small",
+                type: menuValue.value == "home" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    await router.push(getRouterPathWithLang('/', locale.value));
+                    showMobileMenu.value = false;
+                }
             },
-            { default: () => t('home') }
-        ),
+            {
+                default: () => t('home'),
+                icon: () => h(NIcon, { component: Home })
+            }),
         key: "home"
     },
     {
         label: () => h(
             NButton,
             {
-                tertiary: true,
-                ghost: true,
-                onClick: () => router.push('/admin')
+                text: true,
+                size: "small",
+                type: menuValue.value == "user" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    await router.push(getRouterPathWithLang("/user", locale.value));
+                    showMobileMenu.value = false;
+                }
             },
-            { default: () => "Admin" }
+            {
+                default: () => t('user'),
+                icon: () => h(NIcon, { component: User }),
+            }
+        ),
+        key: "user",
+        show: !isTelegram.value
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                type: menuValue.value == "admin" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    await router.push(getRouterPathWithLang('/admin', locale.value));
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => "Admin",
+                icon: () => h(NIcon, { component: AdminPanelSettingsFilled }),
+            }
         ),
         show: !!adminAuth.value,
         key: "admin"
@@ -108,12 +141,37 @@ const menuOptions = computed(() => [
         label: () => h(
             NButton,
             {
-                tertiary: true,
-                ghost: true,
-                onClick: () => localeCache.value == 'zh' ? changeLocale('en') : changeLocale('zh')
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                onClick: () => { toggleDark(); showMobileMenu.value = false; }
             },
             {
-                default: () => localeCache.value == 'zh' ? "English" : "中文"
+                default: () => isDark.value ? t('light') : t('dark'),
+                icon: () => h(
+                    NIcon, { component: isDark.value ? LightModeFilled : DarkModeFilled }
+                )
+            }
+        ),
+        key: "theme"
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                onClick: async () => {
+                    locale.value == 'zh' ? await changeLocale('en') : await changeLocale('zh');
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => locale.value == 'zh' ? "English" : "中文",
+                icon: () => h(
+                    NIcon, { component: Language }
+                )
             }
         ),
         key: "lang"
@@ -122,115 +180,87 @@ const menuOptions = computed(() => [
         label: () => h(
             NButton,
             {
-                tertiary: true,
-                ghost: true,
-                onClick: () => { showLogin.value = true }
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                tag: "a",
+                target: "_blank",
+                href: "https://github.com/dreamhunter2333/cloudflare_temp_email",
             },
-            { default: () => t('login') }
-        ),
-        show: !jwt.value,
-        key: "login"
-    },
-    {
-        label: () => h(
-            NButton,
             {
-                tertiary: true,
-                ghost: true,
-                onClick: () => { showLogout.value = true }
-            },
-            { default: () => t('logout') }
+                default: () => version || "Github",
+                icon: () => h(NIcon, { component: GithubAlt })
+            }
         ),
-        show: !!jwt.value,
-        key: "logout"
-    },
-    {
-        label: () => h(
-            NButton,
-            {
-                tertiary: true,
-                ghost: true,
-                onClick: () => { router.push('/settings') }
-            },
-            { default: () => t('settings') }
-        ),
-        key: "settings"
+        key: "github"
     }
 ]);
 
-const menuOptionsMobile = [
-    {
-        label: () => h(
-            NIcon,
-            {
-                component: MenuFilled
-            }
-        ),
-        key: "menu",
-        children: menuOptions.value
-    },
-];
+useHead({
+    title: () => openSettings.value.title || t('title'),
+    meta: [
+        { name: "description", content: openSettings.value.description || t('title') },
+    ]
+});
+
+const logoClickCount = ref(0);
+const logoClick = async () => {
+    if (route.path.includes("admin")) {
+        logoClickCount.value = 0;
+        return;
+    }
+    if (logoClickCount.value >= 5) {
+        logoClickCount.value = 0;
+        message.info("Change to admin Page");
+        await router.push(getRouterPathWithLang('/admin', locale.value));
+    } else {
+        logoClickCount.value++;
+    }
+    if (logoClickCount.value > 0) {
+        message.info(`Click ${5 - logoClickCount.value + 1} times to enter the admin page`);
+    }
+}
+
+onMounted(async () => {
+    await api.getOpenSettings(message);
+});
 </script>
 
 <template>
     <div>
-        <n-layout-header>
-            <h2 v-if="!isMobile" style="display: inline-block; margin-left: 10px;">{{ t('title') }}</h2>
-            <div>
-                <n-menu v-if="!isMobile" mode="horizontal" :options="menuOptions" />
-                <n-menu v-else mode="horizontal" :options="menuOptionsMobile" />
-            </div>
-            <div>
-                <n-switch v-model:value="themeSwitch" :size="isMobile ? 'small' : 'medium'">
-                    <template #checked-icon>
-                        <n-icon :component="DarkModeFilled" />
-                    </template>
-                    <template #unchecked-icon>
-                        <n-icon :component="DarkModeOutlined" />
-                    </template>
-                </n-switch>
-                <n-button tag="a" target="_blank" tertiary type="primary" round :size="isMobile ? 'small' : 'medium'"
-                    href="https://github.com/dreamhunter2333/cloudflare_temp_email">
-                    <n-icon :component="StarOutlineFilled" /> Github
-                </n-button>
-            </div>
-        </n-layout-header>
-        <n-modal v-model:show="showLogin" preset="dialog" title="Dialog">
-            <template #header>
-                <div>{{ t('login') }}</div>
+        <n-page-header>
+            <template #title>
+                <h3>{{ openSettings.title || t('title') }}</h3>
             </template>
-            <n-input v-model:value="password" type="textarea" :autosize="{
-                minRows: 3
-            }" />
-            <template #action>
-                <n-button @click="login" size="small" tertiary round type="primary">
-                    {{ t('login') }}
-                </n-button>
+            <template #avatar>
+                <div @click="logoClick">
+                    <n-avatar style="margin-left: 10px;" src="/logo.png" />
+                </div>
             </template>
-        </n-modal>
-        <n-modal v-model:show="showLogout" preset="dialog" title="Dialog">
-            <template #header>
-                <div>{{ t('logout') }}</div>
+            <template #extra>
+                <n-space>
+                    <n-menu v-if="!isMobile" mode="horizontal" :options="menuOptions" responsive />
+                    <n-button v-else :text="true" @click="showMobileMenu = !showMobileMenu" style="margin-right: 10px;">
+                        <template #icon>
+                            <n-icon :component="MenuFilled" />
+                        </template>
+                        {{ t('menu') }}
+                    </n-button>
+                </n-space>
             </template>
-            <p>{{ t('logoutConfirm') }}</p>
-            <template #action>
-                <n-button @click="logout" size="small" tertiary round type="primary">
-                    {{ t('logout') }}
-                </n-button>
-            </template>
-        </n-modal>
+        </n-page-header>
+        <n-drawer v-model:show="showMobileMenu" placement="top" style="height: 100vh;">
+            <n-drawer-content :title="t('menu')" closable>
+                <n-menu :options="menuOptions" />
+            </n-drawer-content>
+        </n-drawer>
         <n-modal v-model:show="showAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
-            title="Dialog">
-            <template #header>
-                <div>{{ t('auth') }}</div>
-            </template>
-            <p>{{ t('authTip') }}</p>
-            <n-input v-model:value="auth" type="textarea" :autosize="{
-                minRows: 3
-            }" />
+            :title="t('accessHeader')">
+            <p>{{ t('accessTip') }}</p>
+            <n-input v-model:value="auth" type="textarea" :autosize="{ minRows: 3 }" />
             <template #action>
-                <n-button @click="authFunc" size="small" tertiary round type="primary">
-                    {{ t('auth') }}
+                <n-button :loading="loading" @click="authFunc" type="primary">
+                    {{ t('ok') }}
                 </n-button>
             </template>
         </n-modal>
@@ -242,5 +272,27 @@ const menuOptionsMobile = [
     display: flex;
     align-items: center;
     justify-content: space-between;
+}
+
+.n-alert {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.n-card {
+    margin-top: 10px;
+}
+
+.center {
+    display: flex;
+    text-align: left;
+    place-items: center;
+    justify-content: center;
+    margin: 20px;
+}
+
+.n-form .n-button {
+    margin-top: 10px;
 }
 </style>

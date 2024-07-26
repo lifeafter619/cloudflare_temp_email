@@ -1,22 +1,35 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Index from '../views/Index.vue'
-import Settings from '../views/Settings.vue'
-import Admin from '../views/Admin.vue'
+import User from '../views/User.vue'
+import { useGlobalState } from '../store'
 
 const router = createRouter({
     history: createWebHistory(),
     routes: [
         {
             path: '/',
+            alias: "/:lang/",
             component: Index
         },
         {
-            path: '/settings',
-            component: Settings
+            path: '/user',
+            alias: "/:lang/user",
+            component: User
         },
         {
             path: '/admin',
-            component: Admin
+            alias: "/:lang/admin",
+            component: () => import('../views/Admin.vue')
+        },
+        {
+            path: '/telegram_mail',
+            alias: "/:lang/telegram_mail",
+            component: () => import('../views/telegram/Mail.vue')
+        },
+        {
+            name: 'not-found',
+            path: '/:pathMatch(.*)*',
+            redirect: '/'
         }
     ]
 })

@@ -3,28 +3,56 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
+import wasm from "vite-plugin-wasm";
+import topLevelAwait from "vite-plugin-top-level-await";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   build: {
-    outDir: '../dist',
+    outDir: './dist',
   },
   plugins: [
     vue(),
+    wasm(),
+    topLevelAwait(),
+    AutoImport({
+      imports: [
+        'vue',
+        {
+          'naive-ui': [
+            'useMessage',
+            'NButton',
+            'NPopconfirm',
+            'NIcon',
+          ]
+        }
+      ]
+    }),
+    Components({
+      resolvers: [NaiveUiResolver()]
+    }),
     VitePWA({
       registerType: 'autoUpdate',
       devOptions: {
         enabled: true
       },
+      workbox: {
+        disableDevLogs: true,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      },
       manifest: {
         name: 'Temp Email',
         short_name: 'Temp Email',
         description: 'Temp Email - Temporary Email',
+        theme_color: '#ffffff',
         icons: [
           {
-            src: '/logo.svg',
+            src: '/logo.png',
             sizes: '192x192',
-            type: 'image/svg+xml'
+            type: 'image/png'
           }
         ]
       }
@@ -34,5 +62,8 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
+  },
+  define: {
+    'import.meta.env.PACKAGE_VERSION': JSON.stringify(process.env.npm_package_version),
   }
 })

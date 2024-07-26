@@ -1,0 +1,46 @@
+name: Tag Build CI
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - uses: pnpm/action-setup@v3
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+          run_install: false
+
+      - name: Build Frontend
+        run: cd frontend && pnpm install --no-frozen-lockfile && pnpm build:release
+
+      - name: Zip Frontend dist
+        run: cd frontend/dist/ && zip -r frontend.zip *
+
+      - name: cp wrangler.toml
+        run: cd worker && cp wrangler.toml.template wrangler.toml
+
+      - name: Build Backend
+        run: cd worker && pnpm install --no-frozen-lockfile && pnpm build
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            frontend/dist/frontend.zip
+            worker/dist/worker.js

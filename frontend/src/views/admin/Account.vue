@@ -1,0 +1,310 @@
+<script setup>
+import { ref, h, onMounted, watch } from 'vue';
+import { NBadge } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+import { useGlobalState } from '../../store'
+import { api } from '../../api'
+import { NButton, NMenu } from 'naive-ui';
+import { MenuFilled } from '@vicons/material'
+
+const {
+    adminAuth, showAdminAuth, loading,
+    adminTab, adminMailTabAddress, adminSendBoxTabAddress
+} = useGlobalState()
+const message = useMessage()
+
+const { t } = useI18n({
+    messages: {
+        en: {
+            name: 'Name',
+            created_at: 'Created At',
+            updated_at: 'Update At',
+            mail_count: 'Mail Count',
+            send_count: 'Send Count',
+            showCredential: 'Show Mail Address Credential',
+            addressCredential: 'Mail Address Credential',
+            addressCredentialTip: 'Please copy the Mail Address Credential and you can use it to login to your email account.',
+            delete: 'Delete',
+            deleteTip: 'Are you sure to delete this email?',
+            delteAccount: 'Delete Account',
+            viewMails: 'View Mails',
+            viewSendBox: 'View SendBox',
+            itemCount: 'itemCount',
+            query: 'Query',
+            addressQueryTip: 'Leave blank to query all addresses',
+            actions: 'Actions'
+        },
+        zh: {
+            name: '名称',
+            created_at: '创建时间',
+            updated_at: '更新时间',
+            mail_count: '邮件数量',
+            send_count: '发送数量',
+            showCredential: '查看邮箱地址凭证',
+            addressCredential: '邮箱地址凭证',
+            addressCredentialTip: '请复制邮箱地址凭证，你可以使用它登录你的邮箱。',
+            delete: '删除',
+            deleteTip: '确定要删除这个邮箱吗？',
+            delteAccount: '删除邮箱',
+            viewMails: '查看邮件',
+            viewSendBox: '查看发件箱',
+            itemCount: '总数',
+            query: '查询',
+            addressQueryTip: '留空查询所有地址',
+            actions: '操作',
+        }
+    }
+});
+
+const showEmailCredential = ref(false)
+const curEmailCredential = ref("")
+const curDeleteAddressId = ref(0);
+
+const addressQuery = ref("")
+
+const data = ref([])
+const count = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
+const showDeleteAccount = ref(false)
+
+const showCredential = async (id) => {
+    try {
+        curEmailCredential.value = await api.adminShowAddressCredential(id)
+        showEmailCredential.value = true
+    } catch (error) {
+        message.error(error.message || "error");
+        showEmailCredential.value = false
+        curEmailCredential.value = ""
+    }
+}
+
+const deleteEmail = async () => {
+    try {
+        await api.adminDeleteAddress(curDeleteAddressId.value)
+        message.success("success");
+        await fetchData()
+    } catch (error) {
+        message.error(error.message || "error");
+    } finally {
+        showDeleteAccount.value = false
+    }
+}
+
+const fetchData = async () => {
+    try {
+        addressQuery.value = addressQuery.value.trim()
+        const { results, count: addressCount } = await api.fetch(
+            `/admin/address`
+            + `?limit=${pageSize.value}`
+            + `&offset=${(page.value - 1) * pageSize.value}`
+            + (addressQuery.value ? `&query=${addressQuery.value}` : "")
+        );
+        data.value = results;
+        if (addressCount > 0) {
+            count.value = addressCount;
+        }
+    } catch (error) {
+        console.log(error)
+        message.error(error.message || "error");
+    }
+}
+
+const columns = [
+    {
+        title: "ID",
+        key: "id"
+    },
+    {
+        title: t('name'),
+        key: "name"
+    },
+    {
+        title: t('created_at'),
+        key: "created_at"
+    },
+    {
+        title: t('updated_at'),
+        key: "updated_at"
+    },
+    {
+        title: t('mail_count'),
+        key: "mail_count",
+        render(row) {
+            return h(NButton,
+                {
+                    text: true,
+                    onClick: () => {
+                        if (row.mail_count > 0) {
+                            adminMailTabAddress.value = row.name;
+                            adminTab.value = "mails";
+                        }
+                    }
+                },
+                {
+                    icon: () => h(NBadge, {
+                        value: row.mail_count,
+                        'show-zero': true,
+                        max: 99,
+                        type: "success"
+                    }),
+                    default: () => row.mail_count > 0 ? t('viewMails') : ""
+                }
+            )
+        }
+    },
+    {
+        title: t('send_count'),
+        key: "send_count",
+        render(row) {
+            return h(NButton,
+                {
+                    text: true,
+                    onClick: () => {
+                        if (row.send_count > 0) {
+                            adminSendBoxTabAddress.value = row.name;
+                            adminTab.value = "sendBox";
+                        }
+                    }
+                },
+                {
+                    icon: () => h(NBadge, {
+                        value: row.send_count,
+                        'show-zero': true,
+                        max: 99,
+                        type: "success"
+                    }),
+                    default: () => row.send_count > 0 ? t('viewSendBox') : ""
+                }
+            )
+        }
+    },
+    {
+        title: t('actions'),
+        key: 'actions',
+        render(row) {
+            return h('div', [
+                h(NMenu, {
+                    mode: "horizontal",
+                    options: [
+                        {
+                            label: t('actions'),
+                            icon: () => h(MenuFilled),
+                            key: "action",
+                            children: [
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => showCredential(row.id)
+                                        },
+                                        { default: () => t('showCredential') }
+                                    ),
+                                },
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => {
+                                                adminMailTabAddress.value = row.name;
+                                                adminTab.value = "mails";
+                                            }
+                                        },
+                                        { default: () => t('viewMails') }
+                                    )
+                                },
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => {
+                                                adminSendBoxTabAddress.value = row.name;
+                                                adminTab.value = "sendBox";
+                                            }
+                                        },
+                                        { default: () => t('viewSendBox') }
+                                    )
+                                },
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => {
+                                                curDeleteAddressId.value = row.id;
+                                                showDeleteAccount.value = true;
+                                            }
+                                        },
+                                        { default: () => t('delete') }
+                                    )
+                                }
+                            ]
+                        }
+                    ]
+                })
+            ])
+        }
+    }
+]
+
+watch([page, pageSize], async () => {
+    await fetchData()
+})
+
+onMounted(async () => {
+    if (!adminAuth.value) {
+        showAdminAuth.value = true;
+        return;
+    }
+    await fetchData()
+})
+</script>
+
+<template>
+    <div style="margin-top: 10px;">
+        <n-modal v-model:show="showEmailCredential" preset="dialog" title="Dialog">
+            <template #header>
+                <div>{{ t("addressCredential") }}</div>
+            </template>
+            <span>
+                <p>{{ t("addressCredentialTip") }}</p>
+            </span>
+            <n-card :bordered="false" embedded>
+                <b>{{ curEmailCredential }}</b>
+            </n-card>
+            <template #action>
+            </template>
+        </n-modal>
+        <n-modal v-model:show="showDeleteAccount" preset="dialog" :title="t('delteAccount')">
+            <p>{{ t('deleteTip') }}</p>
+            <template #action>
+                <n-button :loading="loading" @click="deleteEmail" size="small" tertiary type="error">
+                    {{ t('delteAccount') }}
+                </n-button>
+            </template>
+        </n-modal>
+        <n-input-group>
+            <n-input v-model:value="addressQuery" clearable :placeholder="t('addressQueryTip')"
+                @keydown.enter="fetchData" />
+            <n-button @click="fetchData" type="primary" tertiary>
+                {{ t('query') }}
+            </n-button>
+        </n-input-group>
+        <div style="display: inline-block;">
+            <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count"
+                :page-sizes="[20, 50, 100]" show-size-picker>
+                <template #prefix="{ itemCount }">
+                    {{ t('itemCount') }}: {{ itemCount }}
+                </template>
+            </n-pagination>
+        </div>
+        <n-data-table :columns="columns" :data="data" :bordered="false" embedded />
+    </div>
+</template>
+
+<style scoped>
+.n-pagination {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+</style>

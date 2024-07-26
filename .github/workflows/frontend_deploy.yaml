@@ -1,0 +1,63 @@
+name: Deploy Frontend
+
+on:
+  push:
+    paths:
+      - "frontend/**"
+    tags:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - uses: pnpm/action-setup@v3
+        name: Install pnpm
+        id: pnpm-install
+        with:
+          version: 8
+          run_install: false
+
+      - name: Deploy Frontend for ${{ github.ref_name }}
+        run: |
+          cd frontend/
+          echo "${{ secrets.FRONTEND_ENV }}" > .env.prod
+          export project_name=${{ secrets.FRONTEND_NAME }}
+          pnpm install --no-frozen-lockfile
+          export frontend_branch=${{ secrets.FRONTEND_BRANCH }}
+          if [ -n "$frontend_branch" ]; then
+            echo "Deploying branch $frontend_branch"
+            pnpm run deploy:actions --project-name=$project_name
+          else
+            echo "Deploying branch prodcution"
+            pnpm run deploy --project-name=$project_name
+          fi
+          echo "Deploying prodcution for ${{ github.ref_name }}"
+          echo "Deployed for tag ${{ github.ref_name }}"
+
+          export tg_mini_app_project_name=${{ secrets.TG_FRONTEND_NAME }}
+          if [ -n "$tg_mini_app_project_name" ]; then
+            echo "Deploying telegram mini app $tg_mini_app_project_name"
+            if [ -n "$frontend_branch" ]; then
+              echo "Deploying telegram mini app branch $frontend_branch"
+              pnpm run deploy:actions:telegram --project-name=$tg_mini_app_project_name
+            else
+              echo "Deploying telegram mini app branch prodcution"
+              pnpm run deploy:telegram --project-name=$tg_mini_app_project_name
+            fi
+            echo "Deployed telegram mini app for ${{ github.ref_name }}"
+          fi
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

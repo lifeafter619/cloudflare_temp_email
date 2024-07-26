@@ -28,4 +28,7 @@ coverage
 *.sw?
 
 .env.*
+!.env.example
+!.env.pages
 *-dist/
+components.d.ts

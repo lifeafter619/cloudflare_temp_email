@@ -1,0 +1,79 @@
+name = "cloudflare_temp_email"
+main = "src/worker.ts"
+compatibility_date = "2023-12-01"
+node_compat = true
+# if you want use custom_domain, you need to add routes
+# routes = [
+# 	{ pattern = "temp-email-api.xxxxx.xyz", custom_domain = true },
+# ]
+
+# enable cron if you want set auto clean up
+# [triggers]
+# crons = [ "0 0 * * *" ]
+
+# send_email = [
+#    { name = "SEND_MAIL" },
+# ]
+
+[vars]
+# TITLE = "Custom Title" # custom title
+# ANNOUNCEMENT = "Custom Announcement"
+PREFIX = "tmp"
+# (min, max) length of the adderss, if not set, the default is (1, 30)
+# MIN_ADDRESS_LEN = 1
+# MAX_ADDRESS_LEN = 30
+# IF YOU WANT TO MAKE YOUR SITE PRIVATE, UNCOMMENT THE FOLLOWING LINES
+# PASSWORDS = ["123", "456"]
+# For admin panel
+# ADMIN_PASSWORDS = ["123", "456"]
+# ADMIN CONTACT, CAN BE ANY STRING
+# ADMIN_CONTACT = "xx@xx.xxx"
+DEFAULT_DOMAINS = ["xxx.xxx1" , "xxx.xxx2"] # domain name for no role users
+DOMAINS = ["xxx.xxx1" , "xxx.xxx2"] # all domain names
+# For chinese domain name, you can use DOMAIN_LABELS to show chinese domain name
+# DOMAIN_LABELS = ["中文.xxx", "xxx.xxx2"]
+# USER_DEFAULT_ROLE = "vip" # default role for new users(only when enable mail verification)
+# User roles configuration, if domains is empty will use default_domains, if prefix is null will use default prefix, if prefix is empty string will not use prefix
+# USER_ROLES = [
+#    { domains = ["xxx.xxx1" , "xxx.xxx2"], role = "vip", prefix = "vip" },
+#    { domains = ["xxx.xxx1" , "xxx.xxx2"], role = "admin", prefix = "" },
+# ]
+JWT_SECRET = "xxx"
+BLACK_LIST = ""
+# Allow users to create email addresses
+ENABLE_USER_CREATE_EMAIL = true
+# Allow users to delete messages
+ENABLE_USER_DELETE_EMAIL = true
+# Allow automatic replies to emails
+ENABLE_AUTO_REPLY = false
+# Allow webhook
+# ENABLE_WEBHOOK = true
+# Footer text
+# COPYRIGHT = "Dream Hunter"
+# default send balance, if not set, it will be 0
+# DEFAULT_SEND_BALANCE = 1
+# Turnstile verification
+# CF_TURNSTILE_SITE_KEY = ""
+# CF_TURNSTILE_SECRET_KEY = ""
+# telegram bot
+# TG_MAX_ACCOUNTS = 5
+# global forward address list, if set, all emails will be forwarded to these addresses
+# FORWARD_ADDRESS_LIST = ["xxx@xxx.com"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "xxx"
+database_id = "xxx"
+
+# kv config for send email verification code
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "xxxx"
+
+# ratelimit config for /api/new_address
+# [[unsafe.bindings]]
+# name = "RATE_LIMITER"
+# type = "ratelimit"
+# namespace_id = "1001"
+# # 10 requests per minute
+# simple = { limit = 10, period = 60 }
