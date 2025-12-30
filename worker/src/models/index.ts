@@ -1,12 +1,31 @@
+import type {
+    AuthenticatorTransportFuture,
+    CredentialDeviceType,
+    Base64URLString,
+} from '@simplewebauthn/types';
+
+export type Passkey = {
+    id: Base64URLString;
+    publicKey: string;
+    counter: number;
+    deviceType: CredentialDeviceType;
+    backedUp: boolean;
+    transports?: AuthenticatorTransportFuture[];
+};
+
 export class AdminWebhookSettings {
+    enableAllowList: boolean;
     allowList: string[];
 
-    constructor(allowList: string[]) {
+    constructor(enableAllowList: boolean, allowList: string[]) {
+        this.enableAllowList = enableAllowList;
         this.allowList = allowList;
     }
 }
 
 export type WebhookMail = {
+    id: string;
+    url?: string;
     from: string;
     to: string;
     subject: string;
@@ -15,7 +34,14 @@ export type WebhookMail = {
     parsedHtml: string;
 }
 
-export class CleanupSettings {
+export type CustomSqlCleanup = {
+    id: string;           // Unique identifier
+    name: string;         // Cleanup task name
+    sql: string;          // Custom SQL statement (DELETE only)
+    enabled: boolean;     // Whether to enable auto cleanup
+}
+
+export type CleanupSettings = {
 
     enableMailsAutoCleanup: boolean | undefined;
     cleanMailsDays: number;
@@ -23,22 +49,16 @@ export class CleanupSettings {
     cleanUnknowMailsDays: number;
     enableSendBoxAutoCleanup: boolean | undefined;
     cleanSendBoxDays: number;
-
-    constructor(data: CleanupSettings | undefined | null) {
-        const {
-            enableMailsAutoCleanup, cleanMailsDays,
-            enableUnknowMailsAutoCleanup, cleanUnknowMailsDays,
-            enableSendBoxAutoCleanup, cleanSendBoxDays
-        } = data || {};
-        this.enableMailsAutoCleanup = enableMailsAutoCleanup;
-        this.cleanMailsDays = cleanMailsDays || 0;
-        this.enableUnknowMailsAutoCleanup = enableUnknowMailsAutoCleanup;
-        this.cleanUnknowMailsDays = cleanUnknowMailsDays || 0;
-        this.enableSendBoxAutoCleanup = enableSendBoxAutoCleanup;
-        this.cleanSendBoxDays = cleanSendBoxDays || 0;
-    }
+    enableAddressAutoCleanup: boolean | undefined;
+    cleanAddressDays: number;
+    enableInactiveAddressAutoCleanup: boolean | undefined;
+    cleanInactiveAddressDays: number;
+    enableUnboundAddressAutoCleanup: boolean | undefined;
+    cleanUnboundAddressDays: number;
+    enableEmptyAddressAutoCleanup: boolean | undefined;
+    cleanEmptyAddressDays: number;
+    customSqlCleanupList: CustomSqlCleanup[] | undefined;
 }
-
 
 export class GeoData {
 
@@ -104,3 +124,50 @@ export class UserInfo {
         this.userEmail = userEmail;
     }
 }
+
+export class WebhookSettings {
+    enabled: boolean = false
+    url: string = ''
+    method: string = 'POST'
+    headers: string = JSON.stringify({
+        "Content-Type": "application/json"
+    }, null, 2)
+    body: string = JSON.stringify({
+        "id": "${id}",
+        "url": "${url}",
+        "from": "${from}",
+        "to": "${to}",
+        "subject": "${subject}",
+        "raw": "${raw}",
+        "parsedText": "${parsedText}",
+        "parsedHtml": "${parsedHtml}",
+    }, null, 2)
+}
+
+export type UserOauth2Settings = {
+    name: string;
+    clientID: string;
+    clientSecret: string;
+    authorizationURL: string;
+    accessTokenURL: string;
+    accessTokenFormat: string;
+    userInfoURL: string;
+    redirectURL: string;
+    logoutURL?: string;
+    userEmailKey: string;
+    scope: string;
+    enableMailAllowList?: boolean | undefined;
+    mailAllowList?: string[] | undefined;
+}
+
+export type EmailRuleSettings = {
+    blockReceiveUnknowAddressEmail: boolean;
+    emailForwardingList: SubdomainForwardAddressList[]
+}
+
+export type RoleConfig = {
+    maxAddressCount?: number;
+    // future configs can be added here
+}
+
+export type RoleAddressConfig = Record<string, RoleConfig>;

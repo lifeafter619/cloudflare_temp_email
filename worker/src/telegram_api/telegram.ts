@@ -4,11 +4,11 @@ import { Telegraf, Context as TgContext, Markup } from "telegraf";
 import { callbackQuery } from "telegraf/filters";
 
 import { CONSTANTS } from "../constants";
-import { getDomains, getStringValue } from '../utils';
-import { HonoCustomType } from "../types";
+import { getDomains, getJsonObjectValue, getStringValue } from '../utils';
 import { TelegramSettings } from "./settings";
 import { bindTelegramAddress, deleteTelegramAddress, jwtListToAddressData, tgUserNewAddress, unbindTelegramAddress, unbindTelegramByAddress } from "./common";
 import { commonParseMail } from "../common";
+import { UserFromGetMe } from "telegraf/types";
 
 
 const COMMANDS = [
@@ -18,7 +18,7 @@ const COMMANDS = [
     },
     {
         command: "new",
-        description: "新建邮箱地址, 如果要自定义邮箱地址, 请输入 /new <name>@<domain>, name [a-z0-9] 有效"
+        description: "新建邮箱地址, 如果要自定义邮箱地址, 请输入 /new, 通过 /new <name>@<domain> 可以指定, name [a-z0-9] 有效, name 为空则随机生成, @<domain> 可选"
     },
     {
         command: "address",
@@ -40,10 +40,18 @@ const COMMANDS = [
         command: "mails",
         description: "查看邮件, 请输入 /mails <邮箱地址>, 不输入地址默认查看第一个地址"
     },
+    {
+        command: "cleaninvalidaddress",
+        description: "清理无效地址, 请输入 /cleaninvalidaddress"
+    },
 ]
 
 export function newTelegramBot(c: Context<HonoCustomType>, token: string): Telegraf {
     const bot = new Telegraf(token);
+    const botInfo = getJsonObjectValue<UserFromGetMe>(c.env.TG_BOT_INFO);
+    if (botInfo) {
+        bot.botInfo = botInfo;
+    }
 
     bot.use(async (ctx, next) => {
         // check if in private chat
@@ -93,7 +101,11 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             const res = await tgUserNewAddress(c, userId.toString(), address);
             return await ctx.reply(`创建地址成功:\n`
                 + `地址: ${res.address}\n`
-                + `凭证: ${res.jwt}\n`
+                + (res.password ? `密码: \`${res.password}\`\n` : '')
+                + `凭证: \`${res.jwt}\`\n`,
+                {
+                    parse_mode: "Markdown"
+                }
             );
         } catch (e) {
             return await ctx.reply(`创建地址失败: ${(e as Error).message}`);
@@ -148,7 +160,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         }
         try {
             // @ts-ignore
-            const address = ctx?.message?.text.slice("/unbind".length).trim();
+            const address = ctx?.message?.text.slice("/delete".length).trim();
             if (!address) {
                 return await ctx.reply("请输入地址");
             }
@@ -172,6 +184,26 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
             );
         } catch (e) {
             return await ctx.reply(`获取地址列表失败: ${(e as Error).message}`);
+        }
+    });
+
+    bot.command("cleaninvalidaddress", async (ctx: TgContext) => {
+        const userId = ctx?.message?.from?.id;
+        if (!userId) {
+            return await ctx.reply("无法获取用户信息");
+        }
+        try {
+            const jwtList = await c.env.KV.get<string[]>(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, 'json') || [];
+            const { invalidJwtList } = await jwtListToAddressData(c, jwtList);
+            const newJwtList = jwtList.filter(jwt => !invalidJwtList.includes(jwt));
+            await c.env.KV.put(`${CONSTANTS.TG_KV_PREFIX}:${userId}`, JSON.stringify(newJwtList));
+            const { addressList } = await jwtListToAddressData(c, newJwtList);
+            return await ctx.reply(`清理无效地址成功:\n\n`
+                + `当前地址列表:\n\n`
+                + addressList.map(a => `地址: ${a}`).join("\n")
+            );
+        } catch (e) {
+            return await ctx.reply(`清理无效地址失败: ${(e as Error).message}`);
         }
     });
 
@@ -201,7 +233,7 @@ export function newTelegramBot(c: Context<HonoCustomType>, token: string): Teleg
         ).bind(
             queryAddress, mailIndex
         ).first<{ raw: string, id: string, created_at: string }>() || {};
-        const { mail } = raw ? await parseMail(raw, queryAddress, created_at) : { mail: "已经没有邮件了" };
+        const { mail } = raw ? await parseMail({ rawEmail: raw }, queryAddress, created_at) : { mail: "已经没有邮件了" };
         const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
         const miniAppButtons = []
         if (settings?.miniAppUrl && settings?.miniAppUrl?.length > 0 && mailId) {
@@ -266,14 +298,14 @@ export async function initTelegramBotCommands(bot: Telegraf) {
 }
 
 const parseMail = async (
-    raw_mail: string | undefined | null,
+    parsedEmailContext: ParsedEmailContext,
     address: string, created_at: string | undefined | null
 ) => {
-    if (!raw_mail) {
+    if (!parsedEmailContext.rawEmail) {
         return {};
     }
     try {
-        const parsedEmail = await commonParseMail(raw_mail);
+        const parsedEmail = await commonParseMail(parsedEmailContext);
         let parsedText = parsedEmail?.text || "";
         if (parsedText.length && parsedText.length > 1000) {
             parsedText = parsedEmail?.text.substring(0, 1000) + "\n\n...\n消息过长请到miniapp查看";
@@ -297,19 +329,20 @@ const parseMail = async (
 
 export async function sendMailToTelegram(
     c: Context<HonoCustomType>, address: string,
-    raw_mail: string, message_id: string | null
+    parsedEmailContext: ParsedEmailContext,
+    message_id: string | null
 ) {
     if (!c.env.TELEGRAM_BOT_TOKEN || !c.env.KV) {
         return;
     }
     const userId = await c.env.KV.get(`${CONSTANTS.TG_KV_PREFIX}:${address}`);
-    const { mail } = await parseMail(raw_mail, address, new Date().toUTCString());
+    const { mail } = await parseMail(parsedEmailContext, address, new Date().toUTCString());
     if (!mail) {
         return;
     }
     const settings = await c.env.KV.get<TelegramSettings>(CONSTANTS.TG_KV_SETTINGS_KEY, "json");
-    const golbalPush = settings?.enableGlobalMailPush && settings?.globalMailPushList;
-    if (!userId && !golbalPush) {
+    const globalPush = settings?.enableGlobalMailPush && settings?.globalMailPushList;
+    if (!userId && !globalPush) {
         return;
     }
     const mailId = await c.env.DB.prepare(
@@ -323,7 +356,7 @@ export async function sendMailToTelegram(
         url.searchParams.set("mail_id", mailId);
         miniAppButtons.push(Markup.button.webApp("查看邮件", url.toString()));
     }
-    if (golbalPush) {
+    if (globalPush) {
         for (const pushId of settings.globalMailPushList) {
             await bot.telegram.sendMessage(pushId, mail, {
                 ...Markup.inlineKeyboard([

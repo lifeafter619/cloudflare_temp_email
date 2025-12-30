@@ -8,6 +8,8 @@ import { useGlobalState } from '../../store'
 import { api } from '../../api'
 import { hashPassword } from '../../utils';
 
+import UserAddressManagement from './UserAddressManagement.vue'
+
 const { loading, openSettings } = useGlobalState()
 const message = useMessage()
 
@@ -34,6 +36,7 @@ const { t } = useI18n({
             prefix: 'Prefix',
             domains: 'Domains',
             roleDonotExist: 'Current Role does not exist',
+            userAddressManagement: 'Address Management',
         },
         zh: {
             success: '成功',
@@ -56,6 +59,7 @@ const { t } = useI18n({
             prefix: '前缀',
             domains: '域名',
             roleDonotExist: '当前角色不存在',
+            userAddressManagement: '地址管理',
         }
     }
 });
@@ -75,6 +79,7 @@ const user = ref({
     password: ""
 })
 const showChangeRole = ref(false)
+const showUserAddressManagement = ref(false)
 const userRoles = ref([])
 const curUserRole = ref('')
 const userRolesOptions = computed(() => {
@@ -214,12 +219,25 @@ const columns = [
         title: t('address_count'),
         key: "address_count",
         render(row) {
-            return h(NBadge, {
-                value: row.address_count,
-                'show-zero': true,
-                max: 99,
-                type: "success"
-            })
+            return h(NButton,
+                {
+                    text: true,
+                    onClick: () => {
+                        if (row.address_count <= 0) return;
+                        curUserId.value = row.id;
+                        showUserAddressManagement.value = true;
+                    }
+                },
+                {
+                    icon: () => h(NBadge, {
+                        value: row.address_count,
+                        'show-zero': true,
+                        max: 99,
+                        type: "success"
+                    }),
+                    default: () => row.address_count > 0 ? t('userAddressManagement') : ""
+                }
+            )
         }
     },
     {
@@ -239,6 +257,19 @@ const columns = [
                             icon: () => h(MenuFilled),
                             key: "action",
                             children: [
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => {
+                                                curUserId.value = row.id;
+                                                showUserAddressManagement.value = true;
+                                            }
+                                        },
+                                        { default: () => t('userAddressManagement') }
+                                    ),
+                                    show: row.address_count > 0
+                                },
                                 {
                                     label: () => h(NButton,
                                         {
@@ -362,27 +393,32 @@ onMounted(async () => {
                 </n-button>
             </template>
         </n-modal>
+        <n-modal v-model:show="showUserAddressManagement" preset="card" :title="t('userAddressManagement')">
+            <UserAddressManagement :user_id="curUserId" />
+        </n-modal>
         <n-input-group>
             <n-input v-model:value="userQuery" @keydown.enter="fetchData" />
             <n-button @click="fetchData" type="primary" tertiary>
                 {{ t('query') }}
             </n-button>
         </n-input-group>
-        <div style="display: inline-block;">
-            <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count"
-                :page-sizes="[20, 50, 100]" show-size-picker>
-                <template #prefix="{ itemCount }">
-                    {{ t('itemCount') }}: {{ itemCount }}
-                </template>
-                <template #suffix>
-                    <n-button @click="showCreateUser = true" size="small" tertiary type="primary"
-                        style="margin-left: 10px">
-                        {{ t('createUser') }}
-                    </n-button>
-                </template>
-            </n-pagination>
+        <div style="overflow: auto;">
+            <div style="display: inline-block;">
+                <n-pagination v-model:page="page" v-model:page-size="pageSize" :item-count="count"
+                    :page-sizes="[20, 50, 100]" show-size-picker>
+                    <template #prefix="{ itemCount }">
+                        {{ t('itemCount') }}: {{ itemCount }}
+                    </template>
+                    <template #suffix>
+                        <n-button @click="showCreateUser = true" size="small" tertiary type="primary"
+                            style="margin-left: 10px">
+                            {{ t('createUser') }}
+                        </n-button>
+                    </template>
+                </n-pagination>
+            </div>
+            <n-data-table :columns="columns" :data="data" :bordered="false" embedded />
         </div>
-        <n-data-table :columns="columns" :data="data" :bordered="false" embedded />
     </div>
 </template>
 
@@ -390,5 +426,9 @@ onMounted(async () => {
 .n-pagination {
     margin-top: 10px;
     margin-bottom: 10px;
+}
+
+.n-data-table {
+    min-width: 800px;
 }
 </style>
