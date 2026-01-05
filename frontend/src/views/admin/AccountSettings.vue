@@ -37,7 +37,7 @@ const { t } = useI18n({
             cancel: 'Cancel',
             config: 'Config',
             source_patterns: 'Source Address Regex (Optional)',
-            source_patterns_placeholder: 'e.g. @gmail\\.com$',
+            source_patterns_placeholder: 'e.g. gmail.com',
             source_match_mode: 'Match Mode',
             match_any: 'Any',
             match_all: 'All',
@@ -73,7 +73,7 @@ const { t } = useI18n({
             cancel: '取消',
             config: '配置',
             source_patterns: '来源地址正则（可选）',
-            source_patterns_placeholder: '例如: @gmail\\.com$',
+            source_patterns_placeholder: '例如: gmail.com',
             source_match_mode: '匹配模式',
             match_any: '任一',
             match_all: '全部',
@@ -255,9 +255,9 @@ const fetchData = async () => {
         verifiedAddressList.value = res.verifiedAddressList || []
         fromBlockList.value = res.fromBlockList || []
         noLimitSendAddressList.value = res.noLimitSendAddressList || []
-        emailRuleSettings.value = res.emailRuleSettings || {
-            blockReceiveUnknowAddressEmail: false,
-            emailForwardingList: []
+        emailRuleSettings.value = {
+            blockReceiveUnknowAddressEmail: res.emailRuleSettings?.blockReceiveUnknowAddressEmail || false,
+            emailForwardingList: res.emailRuleSettings?.emailForwardingList || []
         }
     } catch (error) {
         message.error(error.message || "error");
