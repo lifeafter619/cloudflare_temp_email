@@ -6,7 +6,17 @@
   <a href="CHANGELOG_EN.md">🇺🇸 English</a>
 </p>
 
-## v1.2.0(main)
+## v1.2.1(main)
+
+### Bug Fixes
+
+- fix: |定时任务| 修复定时任务清理报错 `e.get is not a function`，使用可选链安全访问 Context 方法
+
+### Improvements
+
+- style: |AI 提取| 暗色模式下 AI 提取信息使用更柔和的蓝色 (#A8C7FA)，减少视觉疲劳
+
+## v1.2.0
 
 ### Breaking Changes
 
@@ -15,6 +25,7 @@
 ### Features
 
 - feat: |Admin| 新增管理员账号页面，显示当前登录方式并支持退出登录（仅限密码登录方式）
+- fix: |GitHub Actions| 修复容器镜像名需要全部小写的问题
 - feat: |邮件转发| 新增来源地址正则转发功能，支持按发件人地址过滤转发，完全向后兼容
 - feat: |地址来源| 新增地址来源追踪功能，记录地址创建来源（Web 记录 IP，Telegram 记录用户 ID，Admin 后台标记）
 - feat: |邮件过滤| 移除后端 keyword 参数，改为前端过滤当前页邮件，优化查询性能

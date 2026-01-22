@@ -6,7 +6,17 @@
   <a href="CHANGELOG_EN.md">🇺🇸 English</a>
 </p>
 
-## v1.2.0(main)
+## v1.2.1(main)
+
+### Bug Fixes
+
+- fix: |Scheduled Tasks| Fix scheduled task cleanup error `e.get is not a function`, use optional chaining for safe access to Context methods
+
+### Improvements
+
+- style: |AI Extraction| Use softer blue color (#A8C7FA) for AI extraction info in dark mode to reduce eye strain
+
+## v1.2.0
 
 ### Breaking Changes
 
@@ -15,6 +25,7 @@
 ### Features
 
 - feat: |Admin| Add admin account page, display current login method and support logout (password login only)
+- fix: |GitHub Actions| Fix container image name must be lowercase
 - feat: |Email Forwarding| Add source address regex forwarding, filter by sender address, fully backward compatible
 - feat: |Address Source| Add address source tracking feature, record address creation source (Web records IP, Telegram records user ID, Admin panel marked)
 - feat: |Email Filtering| Remove backend keyword parameter, switch to frontend filtering of current page emails, optimize query performance
