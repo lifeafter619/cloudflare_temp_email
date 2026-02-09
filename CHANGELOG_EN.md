@@ -6,7 +6,17 @@
   <a href="CHANGELOG_EN.md">🇺🇸 English</a>
 </p>
 
-## v1.3.0(main)
+## v1.4.0(main)
+
+### Features
+
+### Bug Fixes
+
+### Improvements
+
+- style: |Mail List| Improve empty state display for inbox and sent box, show different messages based on mail count, add semantic icons
+
+## v1.3.0
 
 ### Features
 
