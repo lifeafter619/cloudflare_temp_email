@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n'
+import { useScopedI18n } from '@/i18n/app'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -8,38 +8,7 @@ import { api } from '../../api'
 const { loading } = useGlobalState()
 const message = useMessage()
 
-const { t } = useI18n({
-    messages: {
-        en: {
-            save: 'Save',
-            successTip: 'Save Success',
-            enable: 'Enable',
-            enableUserRegister: 'Allow User Register',
-            enableMailVerify: 'Enable Mail Verify (Send address must be an address in the system with a balance and can send mail normally)',
-            verifyMailSender: 'Verify Mail Sender',
-            enableMailAllowList: 'Enable Mail Address Allow List(Manually enterable)',
-            manualInputPrompt: 'Type and press Enter to add',
-            mailAllowList: 'Mail Address Allow List',
-            maxAddressCount: 'Maximum number of email addresses that can be binded',
-            emailCheckRegex: 'Email Check Regex (e.g. ^[^.]+@.+$ to disallow dots before @)',
-            enableEmailCheckRegex: 'Enable Email Check Regex',
-        },
-        zh: {
-            save: '保存',
-            successTip: '保存成功',
-            enable: '启用',
-            enableUserRegister: "允许用户注册",
-            enableMailVerify: '启用邮件验证(发送地址必须是系统中能有余额且能正常发送邮件的地址)',
-            verifyMailSender: '验证邮件发送地址',
-            enableMailAllowList: '启用邮件地址白名单(可手动输入, 回车增加)',
-            manualInputPrompt: '输入后按回车键添加',
-            mailAllowList: '邮件地址白名单',
-            maxAddressCount: '可绑定最大邮箱地址数量',
-            emailCheckRegex: '邮箱正则校验 (例如 ^[^.]+@.+$ 禁止@前面有.)',
-            enableEmailCheckRegex: '启用邮箱正则校验',
-        }
-    }
-});
+const { t } = useScopedI18n('views.admin.UserSettings')
 
 const commonMail = [
     "gmail.com", "163.com", "126.com", "qq.com", "outlook.com", "hotmail.com",
@@ -132,14 +101,14 @@ onMounted(async () => {
                     </n-input-group>
                 </n-form-item-row>
                 <n-form-item-row :label="t('enableEmailCheckRegex')">
-                    <n-input-group>
-                        <n-checkbox v-model:checked="userSettings.enableEmailCheckRegex" style="width: 20%;">
+                    <n-flex align="center" :wrap="false" style="width: 100%;">
+                        <n-checkbox v-model:checked="userSettings.enableEmailCheckRegex" style="flex: 0 0 auto;">
                             {{ t('enable') }}
                         </n-checkbox>
                         <n-input v-model:value="userSettings.emailCheckRegex"
-                            v-if="userSettings.enableEmailCheckRegex"
-                            style="width: 80%;" :placeholder="t('emailCheckRegex')" />
-                    </n-input-group>
+                            v-show="userSettings.enableEmailCheckRegex"
+                            style="flex: 1 1 auto;" :placeholder="t('emailCheckRegex')" />
+                    </n-flex>
                 </n-form-item-row>
             </n-form>
         </n-card>

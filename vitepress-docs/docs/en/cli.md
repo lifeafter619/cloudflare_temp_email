@@ -33,14 +33,16 @@ git clone https://github.com/dreamhunter2333/cloudflare_temp_email.git
 
 ```bash
 # create a database, and copy the output to wrangler.toml in the next step
-wrangler d1 create dev
-wrangler d1 execute dev --file=db/schema.sql --remote
+wrangler d1 create temp-email-db
+wrangler d1 execute temp-email-db --file=db/schema.sql --remote
 # schema update, if you have initialized the database before this date, you can execute this command to update
-# wrangler d1 execute dev --file=db/2024-01-13-patch.sql --remote
-# wrangler d1 execute dev --file=db/2024-04-03-patch.sql --remote
+# wrangler d1 execute temp-email-db --file=db/2024-01-13-patch.sql --remote
+# wrangler d1 execute temp-email-db --file=db/2024-04-03-patch.sql --remote
 # create a namespace, and copy the output to wrangler.toml in the next step
 wrangler kv:namespace create DEV
 ```
+
+Use a D1 database name such as `temp-email-db` or `cloudflare-temp-email-prod`.
 
 ![d1](/readme_assets/d1.png)
 
@@ -121,6 +123,7 @@ ENABLE_AUTO_REPLY = false
 # Footer text
 # COPYRIGHT = "Dream Hunter"
 # DISABLE_SHOW_GITHUB = true # Disable Show GitHub link
+# DISABLE_SHOW_GITHUB_FOR_USER = true # Hide GitHub link for normal users only
 # default send balance, if not set, it will be 0
 # DEFAULT_SEND_BALANCE = 1
 # the role which can send emails without limit, multiple roles can be separated by ,

@@ -7,10 +7,12 @@
  */
 
 import { commonParseMail } from "../common";
+import { extractCode } from "./extract_code";
 import { getBooleanValue, getJsonSetting } from "../utils";
 import { CONSTANTS } from "../constants";
 import { Context } from "hono";
 import type { AiExtractSettings } from "../admin_api/ai_extract_settings";
+import type { ExtractResult } from "../models";
 
 // AI Prompt for email analysis
 const PROMPT = `
@@ -97,7 +99,7 @@ async function extractWithCloudflareAI(
     env: Bindings
 ): Promise<ExtractResult> {
     // Get the AI model name from environment variable or use default
-    const modelName = env.AI_EXTRACT_MODEL || '@cf/meta/llama-3.1-8b-instruct';
+    const modelName = env.AI_EXTRACT_MODEL || '@cf/meta/llama-3.1-8b-instruct-fast';
 
     const result = await env.AI.run(modelName as keyof AiModels, {
         messages: [
@@ -137,34 +139,58 @@ async function extractWithCloudflareAI(
 }
 
 /**
+ * Persist an extraction result to the raw_mails metadata column.
+ * Shared by the Workers AI path and the regex fallback path.
+ *
+ * @param env - Cloudflare Workers environment bindings
+ * @param message_id - The email message ID
+ * @param result - The extraction result to persist
+ */
+async function saveExtractMetadata(
+    env: Bindings,
+    message_id: string | null,
+    result: ExtractResult
+): Promise<void> {
+    try {
+        const metadata = JSON.stringify({
+            ai_extract: result,
+            extracted_at: new Date().toISOString()
+        });
+
+        // Update the raw_mails record with metadata
+        await env.DB.prepare(
+            `UPDATE raw_mails SET metadata = ? WHERE message_id = ?`
+        ).bind(metadata, message_id).run();
+    } catch (e) {
+        console.error('AI extraction metadata save error:', e);
+    }
+}
+
+/**
  * Main extraction function
- * Checks if AI extraction is enabled, processes the email content, and saves to database
+ * Checks if extraction is enabled, processes the email content, and saves to database.
+ * Uses Cloudflare Workers AI when the `AI` binding is available; otherwise falls back
+ * to a built-in regex extractor that surfaces verification codes only.
  *
  * @param parsedEmailContext - The parsed email context
  * @param env - Cloudflare Workers environment bindings
  * @param message_id - The email message ID
  * @param address - The recipient email address
- * @returns Promise<void>
+ * @returns Promise<ExtractResult | null>
  */
 export async function extractEmailInfo(
     parsedEmailContext: ParsedEmailContext,
     env: Bindings,
     message_id: string | null,
     address: string
-): Promise<void> {
+): Promise<ExtractResult | null> {
     try {
-        // Check if AI extraction is enabled via environment variable
+        // Check if extraction is enabled via environment variable
         if (!getBooleanValue(env.ENABLE_AI_EMAIL_EXTRACT)) {
-            return;
+            return null;
         }
 
-        // Ensure AI binding is available
-        if (!env.AI) {
-            console.error('AI binding not available');
-            return;
-        }
-
-        // Check allowlist if enabled
+        // Check allowlist if enabled (applies to both AI and the regex fallback)
         const aiSettings = await getJsonSetting<AiExtractSettings>(
             { env: env } as Context<HonoCustomType>,
             CONSTANTS.AI_EXTRACT_SETTINGS_KEY
@@ -186,17 +212,31 @@ export async function extractEmailInfo(
             });
 
             if (!isAllowed) {
-                console.log(`AI extraction skipped for ${address}: not in allowlist`);
-                return;
+                console.log(`Email extraction skipped for ${address}: not in allowlist`);
+                return null;
             }
         }
 
-        // Parse email to get content
+        // Parse email to get content (shared by the AI path and the regex fallback)
         const parsedEmail = await commonParseMail(parsedEmailContext);
         const emailContent = parsedEmail?.text || parsedEmail?.html || "";
 
         if (!emailContent) {
-            return;
+            return null;
+        }
+
+        // Fallback: when no Workers AI binding is available, use a built-in regex
+        // extractor so self-hosted deployments without Workers AI still surface
+        // verification codes. Telegram / webhook reuse the same ExtractResult.
+        if (!env.AI) {
+            const code = extractCode(emailContent);
+            if (!code) {
+                return null;
+            }
+            const result: ExtractResult = { type: 'auth_code', result: code, result_text: '' };
+            await saveExtractMetadata(env, message_id, result);
+            console.log(`Regex code extraction completed for ${message_id}`);
+            return result;
         }
 
         // Truncate content if too long (max 4000 characters to avoid token limits)
@@ -208,28 +248,12 @@ export async function extractEmailInfo(
 
         // If extraction found something useful, save it to database
         if (result.type !== 'none' && result.result) {
-            const metadata = JSON.stringify({
-                ai_extract: result,
-                extracted_at: new Date().toISOString()
-            });
-
-            // Update the raw_mails record with metadata
-            await env.DB.prepare(
-                `UPDATE raw_mails SET metadata = ? WHERE message_id = ?`
-            ).bind(metadata, message_id).run();
-
+            await saveExtractMetadata(env, message_id, result);
             console.log(`AI extraction completed for ${message_id}: ${result.type}`);
         }
+        return result;
     } catch (e) {
         console.error('AI email extraction error:', e);
+        return null;
     }
 }
-
-/**
- * Type definition for extraction result
- */
-export type ExtractResult = {
-    type: 'auth_code' | 'auth_link' | 'service_link' | 'subscription_link' | 'other_link' | 'none';
-    result: string;
-    result_text: string;
-};
