@@ -21,8 +21,13 @@
 - fix: |AI Extract| Convert HTML-only mail bodies into compact readable text before sending them to Workers AI, preventing long templates from pushing verification codes past the 4000-character truncation window
 - fix: |Frontend| Add mobile Header page padding so the title and menu button no longer sit too close to the screen edge
 
+### Testing
+
+- test: |Worker| Add junk_mail_policy regression tests (issue #1084): `none`/`neutral` results for SPF/DKIM/DMARC are treated as the method being absent, explicit `fail` results are still rejected, and `JUNK_MAIL_FORCE_PASS_LIST` only accepts an explicit `pass`
+
 ### Improvements
 
+- docs: |README| Add a complete Japanese README and Japanese navigation links to the Chinese and English READMEs
 - feat: |Frontend| Lower the "Left list width in two-column mailbox view" minimum from 0.25 to 0 so the left list pane can fully collapse for a near-fullscreen content view, with a 0 mark added; applies to both the inbox and send-box two-pane splits, and clarifies the Appearance setting label so it is clear the value controls the left mail list width
 
 ## v1.9.0
