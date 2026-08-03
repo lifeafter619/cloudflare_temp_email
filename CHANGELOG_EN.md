@@ -6,20 +6,35 @@
   <a href="CHANGELOG_EN.md">English</a>
 </p>
 
-## v1.10.0(main)
+## v1.11.0(main)
 
 ### Features
 
+### Bug Fixes
+
+### Improvements
+
+## v1.10.0
+
+### Features
+
+- feat: |Admin| Add `GET /admin/mails/:id` for administrators to fetch a single mail by ID across mailboxes, including gzip-compressed storage support (issue #1096)
 - feat: |Frontend| Add a "Full-width mailbox list view" toggle in Appearance settings. When enabled, the mailbox shows a full-width list of subjects and body previews by default; clicking a mail expands it into the two-pane split view, clicking the same mail again returns to the list view; in multi-select mode, clicking a mail updates both its checked state and the right-side preview while disabling same-mail collapse, and the split width still follows the "Left list width in two-column mailbox view" setting. Defaults to off, preserving the original two-pane behavior
 - feat: |Frontend| Add "Body Preview Lines" in Appearance settings for the full-width mailbox list view, allowing runtime control over the body-preview clamp. It defaults to 2 lines, and 0 disables previews
+- feat: |Frontend| Add an "Automatically load external images in mail body" toggle in Appearance settings. When disabled, the mail body (including fullscreen view) is run through DOMPurify and an allowlist policy: only references that can be *proven* local are kept (`cid:`, `data:image/`, `blob:` and same-origin relative paths), everything else is blocked. Elements that fetch on their own or change how relative URLs resolve — `base`, `meta`, `script`, `link`, `iframe`, `object`, `embed`, `noscript` — are removed in this mode, while `<style>` is kept with remote `url()`, `image-set()` and `@import` references substituted. A banner above the body reports how many resources were blocked and loads them for that mail on demand; defaults to on, preserving the previous behavior (issue #1073)
 
 ### Bug Fixes
 
+- fix: |Frontend| Preserve external navigation links on `<a>` and `<area>` elements when automatic remote-image loading is disabled, and block remote CSS resources hidden behind escaped function or at-rule names
+- fix: |Frontend| Sanitize HTML announcements in both the About page and startup notification through a shared DOMPurify helper, preventing executable tags or event attributes in `ANNOUNCEMENT` from causing XSS
 - fix: |Worker| Align junk-mail checking with authentication standards: treat SPF, DKIM, and DMARC `none` plus SPF/DKIM `neutral` as absent, and ignore unregistered results and unsupported method versions; `JUNK_MAIL_FORCE_PASS_LIST` still requires an explicit supported `pass`
 - fix: |Admin| When deleting an address from the admin panel, delete its mails, sender records, sendbox and auto-reply entries before removing the address row itself; previously the address row was deleted first, so the name-based subqueries matched nothing and the mails were left orphaned in the database
 - fix: |AI Extract| Strengthen the prompt to keep original link domains from the email, preventing small models from rewriting verification-link domains (issue #1072)
 - fix: |AI Extract| Convert HTML-only mail bodies into compact readable text before sending them to Workers AI, preventing long templates from pushing verification codes past the 4000-character truncation window
 - fix: |Frontend| Add mobile Header page padding so the title and menu button no longer sit too close to the screen edge
+- fix: |IMAP Proxy| Fix IMAP `STORE` not actually marking mail as read: messages are no longer hardcoded to `\Seen`, and `SimpleMailbox` flag changes are now persisted to a local SQLite file (new `imap_flag_db_path` setting) so the read/unread state survives a client disconnect and reconnect (e.g. Thunderbird polling) instead of resetting on every new connection (issue #1074)
+- fix: |IMAP Proxy| Fix `SEARCH UNSEEN` returning every message: `SimpleMailbox.search()` now evaluates `SEEN`/`UNSEEN`/`FLAGGED`/`DELETED`/`ANSWERED`/`DRAFT` and their negations against the persisted flags, combining multiple keys with AND; search keys it cannot evaluate keep the previous behaviour of matching everything
+- fix: |IMAP Proxy| Fix fetches never marking mail as read: `BODY[...]`, `RFC822` and `RFC822.TEXT` fetches now set `\Seen` per RFC 3501, while `BODY.PEEK[...]`, `RFC822.HEADER` and metadata-only fetches (e.g. `FLAGS`) do not
 
 ### Testing
 
